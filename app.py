@@ -1,3 +1,4 @@
+import io
 import os
 import numpy as np
 import pandas as pd
@@ -443,6 +444,7 @@ st.set_page_config(
 )
 
 # Deep Navy (#0B192C) + Teal (#14B8A6) + Ivory (#FAF8F5) Institutional Styling
+# Works identically across both macOS/Browser Dark Mode and Light Mode
 st.markdown(
     """
     <style>
@@ -486,8 +488,25 @@ st.markdown(
         font-size: 0.78rem !important;
         font-weight: 500 !important;
     }
+    /* Active Tab Styling with Teal Underline */
     button[data-baseweb="tab"] {
         font-weight: 600 !important;
+    }
+    /* Prominent Institutional Styling for Download Buttons */
+    div[data-testid="stDownloadButton"] > button {
+        background: linear-gradient(145deg, #0B192C 0%, #112240 100%) !important;
+        color: #FAF8F5 !important;
+        border: 1.5px solid #14B8A6 !important;
+        border-left: 5px solid #14B8A6 !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+        padding: 0.5rem 1.1rem !important;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12) !important;
+        transition: all 0.15s ease-in-out !important;
+    }
+    div[data-testid="stDownloadButton"] > button:hover {
+        border-color: #2DD4BF !important;
+        color: #2DD4BF !important;
     }
     </style>
     """,
@@ -649,6 +668,131 @@ def render_chart(fig: go.Figure, pal: Dict[str, object]) -> None:
     st.plotly_chart(fig, use_container_width=True, theme=pal["plotly_theme"])
 
 
+def generate_excel_report(
+    assumptions: ActuarialAssumptions,
+    pricing_mode: str,
+    base_res: Dict[str, object],
+    proj_df: pd.DataFrame,
+    stress_df: pd.DataFrame,
+    cohort_df: pd.DataFrame
+) -> bytes:
+    """
+    Generates an in-memory multi-sheet Excel actuarial report (.xlsx) using pandas and io.BytesIO
+    reusing the exact valuation outputs, schedules, and stress tables already computed in the app.
+    """
+    output = io.BytesIO()
+
+    # 1. Build Executive Summary & Assumptions table
+    summary_rows = [
+        ("Policyholder & Contract Profile", "Mortality Table Used", str(base_res["table_used"])),
+        ("Policyholder & Contract Profile", "Issue Age (x)", assumptions.issue_age),
+        ("Policyholder & Contract Profile", "Gender", assumptions.gender),
+        ("Policyholder & Contract Profile", "Smoker Status", assumptions.smoker_status),
+        ("Policyholder & Contract Profile", "Age Basis", assumptions.age_basis),
+        ("Policyholder & Contract Profile", "Policy Term (Years)", assumptions.term_years),
+        ("Policyholder & Contract Profile", "Face Amount ($)", round(assumptions.face_amount, 2)),
+        ("Economic & Underwriting Assumptions", "Pricing Mode", pricing_mode),
+        ("Economic & Underwriting Assumptions", "Valuation Interest Rate (%)", round(assumptions.valuation_rate * 100, 2)),
+        ("Economic & Underwriting Assumptions", "Earned Asset Yield (%)", round(assumptions.earned_rate * 100, 2)),
+        ("Economic & Underwriting Assumptions", "Risk Discount / Hurdle Rate (%)", round(assumptions.hurdle_rate * 100, 2)),
+        ("Economic & Underwriting Assumptions", "Initial Preferred Mortality Factor", round(assumptions.preferred_discount, 4)),
+        ("Economic & Underwriting Assumptions", "Valuation Mortality PfAD (%)", round(assumptions.valuation_mort_pad * 100, 2)),
+        ("Economic & Underwriting Assumptions", "Target Profit Margin / Loading (%)", round(assumptions.target_profit_loading * 100, 2)),
+        ("Expense Structure", "Year 1 Fixed Acquisition Expense ($)", round(assumptions.acq_expense_fixed, 2)),
+        ("Expense Structure", "Year 1 Acquisition Commission (% Prem)", round(assumptions.acq_expense_pct * 100, 2)),
+        ("Expense Structure", "Annual Maintenance Expense ($)", round(assumptions.maint_expense_fixed, 2)),
+        ("Expense Structure", "Renewal Expense (% Prem)", round(assumptions.maint_expense_pct * 100, 2)),
+        ("Expense Structure", "Annual Expense Inflation Rate (%)", round(assumptions.inflation_rate * 100, 2)),
+        ("Executive Valuation Results", "Contractual Gross Premium ($)", round(base_res["gross_premium"], 2)),
+        ("Executive Valuation Results", "Statutory Net Premium - Single Decrement ($)", round(base_res["net_premium"], 2)),
+        ("Executive Valuation Results", "Active Pure Premium - Multi Decrement ($)", round(base_res["active_pure_premium"], 2)),
+        ("Executive Valuation Results", "Dynamic Valuation Premium ($)", round(base_res["valuation_premium"], 2)),
+        ("Executive Valuation Results", "PV of Future Profits - PVFP ($)", round(base_res["pvfp"], 2)),
+        ("Executive Valuation Results", "PV of Gross Premiums ($)", round(base_res["pv_premiums"], 2)),
+        ("Executive Valuation Results", "Profit Margin (%)", round(base_res["profit_margin"] * 100, 2)),
+        ("Executive Valuation Results", "Internal Rate of Return - IRR (%)", round(base_res["irr"] * 100, 2) if not np.isnan(base_res["irr"]) else np.nan),
+        ("Executive Valuation Results", "Peak Net Level Reserve ($)", round(base_res["peak_net_reserve"], 2)),
+        ("Executive Valuation Results", "Peak Dynamic Reserve ($)", round(base_res["peak_dynamic_reserve"], 2)),
+    ]
+    exec_summary_df = pd.DataFrame(summary_rows, columns=["Category", "Parameter / Metric", "Value"])
+
+    # 2. Format Cash Flow Projection schedule with descriptive column names
+    schedule_export_df = proj_df.rename(columns={
+        "Year": "Policy Year",
+        "Attained_Age": "Attained Age",
+        "VBT_Base_q_Per_1000": "VBT Base q (per 1,000)",
+        "Wearoff_Factor": "Preferred Wear-off Factor",
+        "Mortality_q": "Effective Mortality Rate (q_d)",
+        "Lapse_q": "Annual Lapse Rate (q_w)",
+        "Inforce_Beg": "In-Force (Beginning)",
+        "Inforce_End": "In-Force (Ending)",
+        "Net_Reserve_Per_Pol": "Net Level Reserve per Policy ($)",
+        "Dynamic_Reserve_Per_Pol": "Dynamic Reserve per Policy ($)",
+        "Premium_Income": "Gross Premium Income ($)",
+        "Expenses": "Policy Expenses ($)",
+        "Investment_Income": "Investment Income ($)",
+        "Death_Claims": "Expected Death Claims ($)",
+        "Reserve_Change": "Reserve Change dV ($)",
+        "Net_Profit": "Net Distributable Profit ($)",
+    })
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        exec_summary_df.to_excel(writer, sheet_name="Executive Summary", index=False)
+        schedule_export_df.to_excel(writer, sheet_name="Cash Flow Schedule", index=False)
+        stress_df.to_excel(writer, sheet_name="Stress Testing", index=False)
+        cohort_df.to_excel(writer, sheet_name="Cohort Comparison", index=False)
+
+        # Apply readable numerical formatting & auto-adjusted column widths across all sheets
+        for sheet_name, ws in writer.sheets.items():
+            ws.views.sheetView[0].showGridLines = True
+            ws.freeze_panes = "A2"
+
+            headers = [cell.value for cell in ws[1]]
+            for col_idx, header in enumerate(headers, start=1):
+                col_letter = ws.cell(row=1, column=col_idx).column_letter
+                header_str = str(header or "")
+
+                # Apply cell number formatting for data rows
+                if sheet_name != "Executive Summary":
+                    for row_idx in range(2, ws.max_row + 1):
+                        cell = ws.cell(row=row_idx, column=col_idx)
+                        if not isinstance(cell.value, (int, float)):
+                            continue
+                        if "($)" in header_str:
+                            cell.number_format = "$#,##0.00;($#,##0.00);\"-\""
+                        elif "(%)" in header_str:
+                            cell.number_format = "0.00\"%\""
+                        elif "per 1,000" in header_str:
+                            cell.number_format = "0.00"
+                        elif "q_d" in header_str:
+                            cell.number_format = "0.00000"
+                        elif "In-Force" in header_str:
+                            cell.number_format = "0.0000"
+                        elif "Factor" in header_str or "q_w" in header_str:
+                            cell.number_format = "0.000"
+                elif col_idx == 3:
+                    for row_idx in range(2, ws.max_row + 1):
+                        metric_label = str(ws.cell(row=row_idx, column=2).value or "")
+                        cell = ws.cell(row=row_idx, column=3)
+                        if isinstance(cell.value, (int, float)):
+                            if "($)" in metric_label:
+                                cell.number_format = "$#,##0.00;($#,##0.00);\"-\""
+                            elif "(%)" in metric_label or "Prem)" in metric_label:
+                                cell.number_format = "0.00\"%\""
+                            elif "Factor" in metric_label:
+                                cell.number_format = "0.0000"
+
+                # Auto-fit column width
+                max_len = max(
+                    [len(str(ws.cell(row=r, column=col_idx).value or "")) for r in range(1, ws.max_row + 1)]
+                    + [len(header_str)]
+                )
+                ws.column_dimensions[col_letter].width = min(max(max_len + 4, 14), 42)
+
+    output.seek(0)
+    return output.getvalue()
+
+
 def main():
     st.title("Term Life Insurance Pricing & Dynamic Reserve Engine")
     st.caption(
@@ -748,9 +892,29 @@ def main():
     proj_df = base_res["projection_df"]
 
     # --------------------------------------------------------------------------
-    # Executive Summary Metrics (Deep Navy + Teal + Ivory Cards)
+    # Prominent Excel Report Export & Executive Summary Header
     # --------------------------------------------------------------------------
-    st.markdown(f"#### Executive Valuation Summary — Mortality Table: `{base_res['table_used']}`")
+    excel_bytes = generate_excel_report(
+        assumptions=assumptions,
+        pricing_mode=pricing_mode,
+        base_res=base_res,
+        proj_df=proj_df,
+        stress_df=stress_df,
+        cohort_df=cohort_df
+    )
+    excel_filename = f"Actuarial_Report_{base_res['table_used'].replace(' ', '_')}_Age{issue_age}.xlsx"
+
+    hdr_col, dl_col = st.columns([3.2, 1.3])
+    with hdr_col:
+        st.markdown(f"#### Executive Valuation Summary — Mortality Table: `{base_res['table_used']}`")
+    with dl_col:
+        st.download_button(
+            label="Download Actuarial Report (Excel)",
+            data=excel_bytes,
+            file_name=excel_filename,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
     k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric(
         "Contract Gross Premium",
