@@ -9,7 +9,7 @@ from typing import Dict, Optional, Tuple
 
 
 # ==============================================================================
-# PHASE 1: DATA LOADING & ACTUARIAL ASSUMPTIONS (DUAL SOA 2015 VBT WORKBOOKS)
+# PHASE 1: DATA LOADING & ACTUARIAL ASSUMPTIONS (SOA 2015 VBT WORKBOOKS)
 # ==============================================================================
 
 @dataclass
@@ -43,7 +43,7 @@ class ActuarialAssumptions:
 
 
 class SOA2015VBTDataLoader:
-    """Loads both SOA 2015 VBT Excel workbooks (Smoker-Distinct ALB/ANB & Preferred Wear-off)."""
+    """Loads SOA 2015 VBT Smoker-Distinct ALB/ANB tables and Preferred Wear-off Factors."""
 
     SHEET_MAP = {
         ("male", "non-smoker", "anb"): "2015 MNS ANB",
@@ -433,13 +433,65 @@ class PricingSimulationEngine:
 
 
 # ==============================================================================
-# PHASE 4: STREAMLIT INTERACTIVE WEB APPLICATION & PLOTLY DASHBOARD
+# PHASE 4: INSTITUTIONAL STREAMLIT WORKBENCH (DEEP NAVY + TEAL + IVORY)
 # ==============================================================================
 
 st.set_page_config(
-    page_title="SOA 2015 VBT Term Life Pricing & Dynamic Reserve Engine",
-    page_icon="📊",
-    layout="wide"
+    page_title="Term Life Pricing & Dynamic Reserve Engine | SOA 2015 VBT",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Deep Navy (#0B192C) + Teal (#14B8A6) + Ivory (#FAF8F5) Institutional Styling
+st.markdown(
+    """
+    <style>
+    .block-container {
+        padding-top: 1.8rem;
+        padding-bottom: 2.5rem;
+    }
+    h1, h2, h3, h4, h5 {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        letter-spacing: -0.01em;
+    }
+    /* KPI Metric Cards: Deep Navy Surface + Teal Left Accent + Crisp Ivory Typography */
+    div[data-testid="stMetric"] {
+        background: linear-gradient(145deg, #0B192C 0%, #112240 100%) !important;
+        border: 1px solid rgba(20, 184, 166, 0.35) !important;
+        border-left: 4px solid #14B8A6 !important;
+        border-radius: 8px !important;
+        padding: 14px 16px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14) !important;
+    }
+    div[data-testid="stMetricLabel"] p,
+    div[data-testid="stMetricLabel"] {
+        font-size: 0.78rem !important;
+        font-weight: 600 !important;
+        color: #E6DEC8 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+    }
+    div[data-testid="stMetricValue"],
+    div[data-testid="stMetricValue"] > div {
+        font-size: 1.45rem !important;
+        font-weight: 700 !important;
+        color: #FAF8F5 !important;
+    }
+    div[data-testid="stMetricDelta"] svg {
+        display: none !important;
+    }
+    div[data-testid="stMetricDelta"],
+    div[data-testid="stMetricDelta"] > div {
+        color: #2DD4BF !important;
+        font-size: 0.78rem !important;
+        font-weight: 500 !important;
+    }
+    button[data-baseweb="tab"] {
+        font-weight: 600 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 
@@ -451,24 +503,187 @@ def load_cached_vbt_data() -> SOA2015VBTDataLoader:
     )
 
 
+def get_theme_palette(canvas_mode: str) -> Dict[str, object]:
+    """
+    Returns coordinated Deep Navy + Teal + Ivory color tokens for:
+    1) 'Auto (Light & Dark Adaptive)' - transparent bg, universal high-contrast traces
+    2) 'Deep Navy Canvas (Dark)'      - locked #0B192C bg with Ivory & Vibrant Teal traces
+    3) 'Warm Ivory Canvas (Light)'    - locked #FAF8F5 bg with Deep Navy & Rich Teal traces
+    """
+    if canvas_mode == "Deep Navy Canvas (Dark)":
+        return {
+            "plotly_theme": None,
+            "paper_bg": "#0B192C",
+            "plot_bg": "#112240",
+            "font_color": "#FAF8F5",
+            "grid_color": "rgba(230, 222, 200, 0.14)",
+            "axis_line": "#334E68",
+            "legend_bg": "rgba(17, 34, 64, 0.92)",
+            "legend_border": "#14B8A6",
+            "navy_primary": "#38BDF8",       # Luminous Sky-Navy on Dark Navy canvas
+            "teal_primary": "#2DD4BF",       # Electric Teal
+            "teal_secondary": "#0D9488",     # Deep Teal
+            "ivory_primary": "#FAF8F5",      # Crisp Ivory line/marker
+            "ivory_fill": "rgba(230, 222, 200, 0.25)",
+            "ivory_bar": "#E6DEC8",          # Warm Ivory Bar
+            "slate_muted": "#94A3B8",        # Silver Slate for dotted baseline
+            "coral_alert": "#FB7185",        # High-visibility Coral Rose for claims/shocks
+            "amber_accent": "#FBBF24",       # Warm Gold-Ivory accent
+            "stress_palette": [
+                "#2DD4BF", "#FAF8F5", "#38BDF8", "#FB7185", "#FBBF24", "#A78BFA", "#94A3B8"
+            ]
+        }
+    elif canvas_mode == "Warm Ivory Canvas (Light)":
+        return {
+            "plotly_theme": None,
+            "paper_bg": "#FAF8F5",
+            "plot_bg": "#F4EFE6",
+            "font_color": "#0B192C",
+            "grid_color": "rgba(11, 25, 44, 0.10)",
+            "axis_line": "#94A3B8",
+            "legend_bg": "rgba(250, 248, 245, 0.94)",
+            "legend_border": "#0D9488",
+            "navy_primary": "#0B192C",       # Deep Institutional Navy
+            "teal_primary": "#0D9488",       # Rich Teal
+            "teal_secondary": "#14B8A6",     # Bright Teal
+            "ivory_primary": "#1E3A8A",      # Royal Navy contrast line on Ivory canvas
+            "ivory_fill": "rgba(212, 180, 131, 0.30)",
+            "ivory_bar": "#D8C8B0",          # Warm Ivory-Sand Bar
+            "slate_muted": "#64748B",        # Slate for dotted baseline
+            "coral_alert": "#E11D48",        # Crimson Rose for claims/shocks
+            "amber_accent": "#D97706",       # Rich Amber
+            "stress_palette": [
+                "#0B192C", "#0D9488", "#2563EB", "#E11D48", "#D97706", "#7C3AED", "#64748B"
+            ]
+        }
+    else:
+        # Auto (Light & Dark Adaptive): works natively with Streamlit Light Mode & Dark Mode
+        return {
+            "plotly_theme": "streamlit",
+            "paper_bg": "rgba(0,0,0,0)",
+            "plot_bg": "rgba(20, 184, 166, 0.04)",
+            "font_color": None,              # Inherit automatically from Streamlit Light/Dark theme
+            "grid_color": "rgba(148, 163, 184, 0.22)",
+            "axis_line": "rgba(148, 163, 184, 0.45)",
+            "legend_bg": "rgba(148, 163, 184, 0.10)",
+            "legend_border": "#14B8A6",
+            "navy_primary": "#2563EB",       # Luminous Cobalt-Navy (high contrast on both dark & white)
+            "teal_primary": "#14B8A6",       # Vibrant Teal (high contrast on both dark & white)
+            "teal_secondary": "#0D9488",     # Deep Teal
+            "ivory_primary": "#00B4D8",      # Cyan-Teal contrast line with Ivory markers
+            "ivory_fill": "rgba(212, 180, 131, 0.24)",
+            "ivory_bar": "#D4B483",          # Warm Ivory-Sand (visible on white AND dark)
+            "slate_muted": "#94A3B8",        # Neutral Slate
+            "coral_alert": "#F43F5E",        # Vibrant Rose-Crimson
+            "amber_accent": "#F59E0B",       # Vivid Amber
+            "stress_palette": [
+                "#14B8A6", "#2563EB", "#D4B483", "#F43F5E", "#38BDF8", "#F59E0B", "#A78BFA"
+            ]
+        }
+
+
+def apply_institutional_chart_layout(
+    fig: go.Figure,
+    title: str,
+    pal: Dict[str, object],
+    height: int = 460,
+    bottom_margin: int = 105,
+    legend_y: float = -0.22
+) -> go.Figure:
+    """
+    Applies a non-overlapping layout:
+    - Title is anchored cleanly at the top-left (y=0.96).
+    - Legend is placed horizontally BELOW the x-axis (y=-0.22) in a bordered pill box,
+      guaranteeing zero collision between the chart title and legend across all screen widths.
+    """
+    layout_kwargs = dict(
+        title=dict(
+            text=f"<b>{title}</b>",
+            x=0.0,
+            y=0.96,
+            xanchor="left",
+            yanchor="top",
+            font=dict(size=15, family="Arial, sans-serif")
+        ),
+        font=dict(family="Arial, sans-serif", size=12),
+        paper_bgcolor=pal["paper_bg"],
+        plot_bgcolor=pal["plot_bg"],
+        hovermode="x unified",
+        height=height,
+        margin=dict(l=58, r=52, t=58, b=bottom_margin),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=legend_y,
+            xanchor="left",
+            x=0.0,
+            bgcolor=pal["legend_bg"],
+            bordercolor=pal["legend_border"],
+            borderwidth=1,
+            font=dict(size=11)
+        )
+    )
+
+    if pal["font_color"] is not None:
+        layout_kwargs["font"]["color"] = pal["font_color"]
+        layout_kwargs["title"]["font"]["color"] = pal["font_color"]
+        layout_kwargs["legend"]["font"]["color"] = pal["font_color"]
+
+    fig.update_layout(**layout_kwargs)
+
+    axis_common = dict(
+        showgrid=True,
+        gridcolor=pal["grid_color"],
+        zeroline=False,
+        linecolor=pal["axis_line"],
+        tickfont=dict(color=pal["font_color"]) if pal["font_color"] else None,
+        title_font=dict(color=pal["font_color"]) if pal["font_color"] else None
+    )
+    fig.update_xaxes(**axis_common)
+    fig.update_yaxes(**axis_common)
+    return fig
+
+
+def render_chart(fig: go.Figure, pal: Dict[str, object]) -> None:
+    """Renders Plotly chart with exact theme control."""
+    st.plotly_chart(fig, use_container_width=True, theme=pal["plotly_theme"])
+
+
 def main():
-    st.title("📊 20-Year Term Life Insurance Pricing & Dynamic Reserve Engine")
-    st.markdown(
-        "**Actuarial Valuation & Stress-Testing Suite** powered by official **SOA 2015 VBT Smoker-Distinct (ANB/ALB)** "
-        "select mortality tables and **SOA 2015 VBT Preferred Wear-off Factors**."
+    st.title("Term Life Insurance Pricing & Dynamic Reserve Engine")
+    st.caption(
+        "Actuarial Valuation, Cash Flow Projection, and Sensitivity Workbench | "
+        "Mortality Basis: SOA 2015 VBT Smoker-Distinct (ANB/ALB) & Preferred Wear-off Factors"
     )
 
     try:
         loader = load_cached_vbt_data()
     except Exception as e:
-        st.error(f"Error loading SOA 2015 VBT Excel files: {e}")
+        st.error(f"Error loading SOA 2015 VBT Excel workbooks: {e}")
         st.stop()
 
     # --------------------------------------------------------------------------
-    # Sidebar: Interactive Policyholder, Economic, Expense, and Pricing Controls
+    # Sidebar Controls
     # --------------------------------------------------------------------------
     with st.sidebar:
-        st.header("⚙️ 1. Policyholder & Table Basis")
+        st.subheader("Display & Theme Settings")
+        canvas_mode = st.selectbox(
+            "Chart Canvas Mode",
+            [
+                "Auto (Light & Dark Adaptive)",
+                "Deep Navy Canvas (Dark)",
+                "Warm Ivory Canvas (Light)"
+            ],
+            index=0,
+            help=(
+                "Auto adapts dynamically to Streamlit Light/Dark mode. "
+                "Deep Navy Canvas and Warm Ivory Canvas lock the chart surface to the "
+                "exact institutional Deep Navy (#0B192C) or Warm Ivory (#FAF8F5) background."
+            )
+        )
+
+        st.divider()
+        st.subheader("1. Policyholder & Table Basis")
         issue_age = st.slider("Issue Age (x)", min_value=18, max_value=75, value=45, step=1)
         col_s1, col_s2 = st.columns(2)
         gender = col_s1.selectbox("Gender", ["Male", "Female"], index=0)
@@ -476,27 +691,32 @@ def main():
         col_s3, col_s4 = st.columns(2)
         age_basis = col_s3.selectbox("Age Basis", ["ANB", "ALB"], index=0)
         term_years = col_s4.selectbox("Term (Years)", [10, 15, 20, 25], index=2)
-        face_amount = st.number_input("Face Amount ($)", min_value=50_000.0, max_value=10_000_000.0, value=500_000.0, step=50_000.0)
+        face_amount = st.number_input(
+            "Face Amount ($)", min_value=50_000.0, max_value=10_000_000.0, value=500_000.0, step=50_000.0
+        )
 
-        st.header("📈 2. Economic & Underwriting Rates")
+        st.divider()
+        st.subheader("2. Economic & Valuation Assumptions")
         valuation_rate = st.slider("Valuation Interest Rate (%)", 1.0, 7.0, 3.5, 0.25) / 100.0
         earned_rate = st.slider("Earned Asset Yield (%)", 1.0, 8.0, 4.5, 0.25) / 100.0
         hurdle_rate = st.slider("Risk Discount / Hurdle Rate (%)", 4.0, 15.0, 8.0, 0.50) / 100.0
-        preferred_discount = st.slider("Initial Preferred Mortality Ratio", 0.50, 1.00, 0.75, 0.05)
-        valuation_mort_pad = st.slider("Dynamic Reserve Mortality PfAD (%)", 0.0, 25.0, 10.0, 1.0) / 100.0
+        preferred_discount = st.slider("Initial Preferred Mortality Factor", 0.50, 1.00, 0.75, 0.05)
+        valuation_mort_pad = st.slider("Valuation Mortality PfAD (%)", 0.0, 25.0, 10.0, 1.0) / 100.0
 
-        st.header("💼 3. Expenses & Pricing Methodology")
+        st.divider()
+        st.subheader("3. Expense Structure & Pricing Mode")
         pricing_mode = st.radio(
             "Gross Premium Calculation Mode",
             ["EPV Loading Formula", "Goal-Seek Exact Target Margin"],
-            index=0,
-            help="EPV Loading adds target margin before reserve strain. Goal-Seek solves for the exact Gross Premium achieving Target Profit Margin after reserve strain."
+            index=0
         )
         target_profit_loading = st.slider("Target Profit Margin / Loading (%)", 2.0, 25.0, 12.0, 0.5) / 100.0
-        acq_expense_fixed = st.number_input("Year 1 Fixed Acquisition Cost ($)", 0.0, 2000.0, 300.0, 25.0)
+        acq_expense_fixed = st.number_input("Year 1 Fixed Acquisition Expense ($)", 0.0, 2000.0, 300.0, 25.0)
         acq_expense_pct = st.slider("Year 1 Acquisition Commission (% Prem)", 0.0, 100.0, 55.0, 5.0) / 100.0
         maint_expense_fixed = st.number_input("Annual Maintenance Expense ($)", 0.0, 500.0, 55.0, 5.0)
         maint_expense_pct = st.slider("Renewal Expense (% Prem)", 0.0, 20.0, 4.0, 0.5) / 100.0
+
+    pal = get_theme_palette(canvas_mode)
 
     assumptions = ActuarialAssumptions(
         issue_age=issue_age,
@@ -528,27 +748,51 @@ def main():
     proj_df = base_res["projection_df"]
 
     # --------------------------------------------------------------------------
-    # Top Executive KPI Metrics Row
+    # Executive Summary Metrics (Deep Navy + Teal + Ivory Cards)
     # --------------------------------------------------------------------------
-    st.subheader(f"📌 Executive Pricing Summary — Table Used: `{base_res['table_used']}`")
+    st.markdown(f"#### Executive Valuation Summary — Mortality Table: `{base_res['table_used']}`")
     k1, k2, k3, k4, k5, k6 = st.columns(6)
-    k1.metric("Contract Gross Premium", f"${base_res['gross_premium']:,.2f}", f"Mode: {'Goal-Seek' if use_goal_seek else 'EPV Load'}")
-    k2.metric("Statutory Net Premium", f"${base_res['net_premium']:,.2f}", f"Active Pure: ${base_res['active_pure_premium']:,.2f}")
-    k3.metric("PV of Future Profits (PVFP)", f"${base_res['pvfp']:,.2f}", f"Hurdle: {hurdle_rate*100:.1f}%")
-    k4.metric("Profit Margin (%)", f"{base_res['profit_margin']*100:.2f}%", f"{(base_res['profit_margin'] - target_profit_loading)*100:+.2f}%p vs Target")
-    k5.metric("Internal Rate of Return (IRR)", f"{base_res['irr']*100:.2f}%" if not np.isnan(base_res["irr"]) else "N/A", f"Spread: {(base_res['irr']-hurdle_rate)*100:+.2f}%p")
-    k6.metric("Peak Dynamic Reserve", f"${base_res['peak_dynamic_reserve']:,.2f}", f"Net Peak: ${base_res['peak_net_reserve']:,.2f}")
+    k1.metric(
+        "Contract Gross Premium",
+        f"${base_res['gross_premium']:,.2f}",
+        f"Basis: {'Goal-Seek' if use_goal_seek else 'EPV Formula'}"
+    )
+    k2.metric(
+        "Statutory Net Premium",
+        f"${base_res['net_premium']:,.2f}",
+        f"Active Pure: ${base_res['active_pure_premium']:,.2f}"
+    )
+    k3.metric(
+        "PV of Future Profits (PVFP)",
+        f"${base_res['pvfp']:,.2f}",
+        f"Discount Rate: {hurdle_rate*100:.1f}%"
+    )
+    k4.metric(
+        "Profit Margin (%)",
+        f"{base_res['profit_margin']*100:.2f}%",
+        f"{(base_res['profit_margin'] - target_profit_loading)*100:+.2f}%p vs Target"
+    )
+    k5.metric(
+        "Internal Rate of Return",
+        f"{base_res['irr']*100:.2f}%" if not np.isnan(base_res["irr"]) else "N/A",
+        f"{(base_res['irr'] - hurdle_rate)*100:+.2f}%p vs Hurdle" if not np.isnan(base_res["irr"]) else "N/A"
+    )
+    k6.metric(
+        "Peak Dynamic Reserve",
+        f"${base_res['peak_dynamic_reserve']:,.2f}",
+        f"Net Peak: ${base_res['peak_net_reserve']:,.2f}"
+    )
 
     st.divider()
 
     # --------------------------------------------------------------------------
-    # Interactive Analytical Tabs
+    # Analytical Navigation Tabs
     # --------------------------------------------------------------------------
     tab1, tab2, tab3, tab4 = st.tabs([
-        "📈 Tab 1: Reserve & Mortality Trajectory",
-        "💵 Tab 2: Cash Flow & Profit Emergence",
-        "⚡ Tab 3: 7-Scenario Stress Testing",
-        "🧬 Tab 4: 8 SOA 2015 VBT Cohort Comparison"
+        "1. Reserve & Mortality Trajectory",
+        "2. Cash Flow & Profit Emergence",
+        "3. Stress Testing & Sensitivity",
+        "4. Cohort Valuation Comparison"
     ])
 
     # === TAB 1: RESERVE & MORTALITY TRAJECTORY ===
@@ -557,86 +801,150 @@ def main():
         with c1:
             fig_res = make_subplots(specs=[[{"secondary_y": True}]])
             fig_res.add_trace(
-                go.Scatter(x=proj_df["Year"], y=proj_df["Net_Reserve_Per_Pol"], mode="lines+markers",
-                           name="Net Level Reserve (V^Net)", line=dict(color="#2ca02c", width=3)),
+                go.Scatter(
+                    x=proj_df["Year"],
+                    y=proj_df["Net_Reserve_Per_Pol"],
+                    mode="lines+markers",
+                    name="Net Level Reserve (Single-Dec)",
+                    line=dict(color=pal["navy_primary"], width=2.8),
+                    marker=dict(size=6, symbol="square", color="#FAF8F5", line=dict(color=pal["navy_primary"], width=2))
+                ),
                 secondary_y=False
             )
             fig_res.add_trace(
-                go.Scatter(x=proj_df["Year"], y=proj_df["Dynamic_Reserve_Per_Pol"], mode="lines+markers",
-                           name="Dynamic Reserve (V^Dyn with PfAD)", line=dict(color="#d62728", width=3)),
+                go.Scatter(
+                    x=proj_df["Year"],
+                    y=proj_df["Dynamic_Reserve_Per_Pol"],
+                    mode="lines+markers",
+                    name="Dynamic Reserve (Multi-Dec + PfAD)",
+                    line=dict(color=pal["teal_primary"], width=3.0),
+                    marker=dict(size=7, symbol="circle", color=pal["teal_primary"], line=dict(color="#0B192C", width=1.2))
+                ),
                 secondary_y=False
             )
             fig_res.add_trace(
-                go.Scatter(x=proj_df["Year"], y=proj_df["Inforce_Beg"] * 100, mode="lines",
-                           fill="tozeroy", name="Active In-Force Survival (%)",
-                           line=dict(color="rgba(31, 119, 180, 0.35)", width=1.5)),
+                go.Scatter(
+                    x=proj_df["Year"],
+                    y=proj_df["Inforce_Beg"] * 100,
+                    mode="lines",
+                    fill="tozeroy",
+                    name="Active In-Force Survival (%)",
+                    line=dict(color=pal["ivory_bar"], width=1.8),
+                    fillcolor=pal["ivory_fill"]
+                ),
                 secondary_y=True
             )
-            fig_res.update_layout(
-                title="Prospective Net Level vs. Dynamic Reserve Trajectory ($)",
-                xaxis_title="Policy Duration (Year)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-                height=440
+            fig_res = apply_institutional_chart_layout(
+                fig_res, "Prospective Net Level vs. Dynamic Reserve Trajectory ($)", pal, height=470, bottom_margin=105
             )
+            fig_res.update_xaxes(title_text="Policy Duration (Year)")
             fig_res.update_yaxes(title_text="Reserve per Active Policy ($)", secondary_y=False)
-            fig_res.update_yaxes(title_text="Active In-Force (%)", range=[0, 105], secondary_y=True)
-            st.plotly_chart(fig_res, use_container_width=True)
+            fig_res.update_yaxes(title_text="Active In-Force (%)", range=[0, 105], showgrid=False, secondary_y=True)
+            render_chart(fig_res, pal)
 
         with c2:
             no_wear_df = scenario_dfs["7. No Preferred Wear-off"]
             fig_mort = make_subplots(specs=[[{"secondary_y": True}]])
             fig_mort.add_trace(
-                go.Scatter(x=proj_df["Year"], y=proj_df["VBT_Base_q_Per_1000"], mode="lines",
-                           name="SOA 2015 VBT Base Rate (per 1,000)", line=dict(color="#7f7f7f", dash="dot", width=2.5)),
+                go.Scatter(
+                    x=proj_df["Year"],
+                    y=proj_df["VBT_Base_q_Per_1000"],
+                    mode="lines",
+                    name="2015 VBT Standard Rate (per 1,000)",
+                    line=dict(color=pal["slate_muted"], dash="dot", width=2.3)
+                ),
                 secondary_y=False
             )
             fig_mort.add_trace(
-                go.Scatter(x=proj_df["Year"], y=proj_df["Mortality_q"] * 1000, mode="lines+markers",
-                           name="Effective Preferred Rate (With Wear-off)", line=dict(color="#1f77b4", width=3)),
+                go.Scatter(
+                    x=proj_df["Year"],
+                    y=proj_df["Mortality_q"] * 1000,
+                    mode="lines+markers",
+                    name="Effective Preferred Rate (With Wear-off)",
+                    line=dict(color=pal["navy_primary"], width=2.8),
+                    marker=dict(size=6, color="#FAF8F5", line=dict(color=pal["navy_primary"], width=2))
+                ),
                 secondary_y=False
             )
             fig_mort.add_trace(
-                go.Scatter(x=no_wear_df["Year"], y=no_wear_df["Mortality_q"] * 1000, mode="lines",
-                           name="Constant Preferred (No Wear-off)", line=dict(color="#ff7f0e", dash="dash", width=2.5)),
+                go.Scatter(
+                    x=no_wear_df["Year"],
+                    y=no_wear_df["Mortality_q"] * 1000,
+                    mode="lines",
+                    name="Constant Preferred (No Wear-off)",
+                    line=dict(color=pal["teal_primary"], dash="dash", width=2.6)
+                ),
                 secondary_y=False
             )
             fig_mort.add_trace(
-                go.Bar(x=proj_df["Year"], y=proj_df["Wearoff_Factor"] * 100,
-                       name="2015 VBT Wear-off Factor (%)", marker_color="rgba(44, 160, 44, 0.28)"),
+                go.Bar(
+                    x=proj_df["Year"],
+                    y=proj_df["Wearoff_Factor"] * 100,
+                    name="2015 VBT Wear-off Factor (%)",
+                    marker=dict(
+                        color=pal["ivory_bar"],
+                        opacity=0.45,
+                        line=dict(color=pal["teal_primary"], width=1.2)
+                    )
+                ),
                 secondary_y=True
             )
-            fig_mort.update_layout(
-                title="SOA 2015 VBT Mortality Curve (per 1,000) & Preferred Wear-off",
-                xaxis_title="Policy Duration (Year)",
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-                height=440
+            fig_mort = apply_institutional_chart_layout(
+                fig_mort, "SOA 2015 VBT Select Mortality Curve (per 1,000) & Preferred Wear-off", pal, height=470, bottom_margin=105
             )
+            fig_mort.update_xaxes(title_text="Policy Duration (Year)")
             fig_mort.update_yaxes(title_text="Mortality Rate per 1,000", secondary_y=False)
-            fig_mort.update_yaxes(title_text="Wear-off Factor (%)", secondary_y=True)
-            st.plotly_chart(fig_mort, use_container_width=True)
+            fig_mort.update_yaxes(title_text="Wear-off Factor (%)", showgrid=False, secondary_y=True)
+            render_chart(fig_mort, pal)
 
     # === TAB 2: CASH FLOW & PROFIT EMERGENCE ===
     with tab2:
         fig_cf = go.Figure()
-        fig_cf.add_trace(go.Bar(x=proj_df["Year"], y=proj_df["Premium_Income"], name="Gross Premium Income", marker_color="#4c78a8"))
-        fig_cf.add_trace(go.Bar(x=proj_df["Year"], y=proj_df["Investment_Income"], name="Investment Income", marker_color="#72b7b2"))
-        fig_cf.add_trace(go.Bar(x=proj_df["Year"], y=-proj_df["Death_Claims"], name="Expected Death Claims (-)", marker_color="#e45756"))
-        fig_cf.add_trace(go.Bar(x=proj_df["Year"], y=-proj_df["Expenses"], name="Policy Expenses (-)", marker_color="#f58518"))
-        fig_cf.add_trace(go.Bar(x=proj_df["Year"], y=-proj_df["Reserve_Change"], name="Reserve Increase -dV (-)", marker_color="#b279a2"))
-        fig_cf.add_trace(go.Scatter(
-            x=proj_df["Year"], y=proj_df["Net_Profit"], mode="lines+markers",
-            name="Net Distributable Profit ($)", line=dict(color="#000000", width=3.5)
+        fig_cf.add_trace(go.Bar(
+            x=proj_df["Year"], y=proj_df["Premium_Income"],
+            name="Gross Premium Income (+)",
+            marker=dict(color=pal["navy_primary"], line=dict(color="#0B192C", width=0.6))
         ))
-        fig_cf.update_layout(
-            barmode="relative",
-            title="Annual Cash Flow Decomposition & Distributable Profit Vector (per Initial Policy Issued)",
-            xaxis_title="Policy Duration (Year)",
-            yaxis_title="Cash Flow Amount ($)",
-            height=460
+        fig_cf.add_trace(go.Bar(
+            x=proj_df["Year"], y=proj_df["Investment_Income"],
+            name="Investment Income (+)",
+            marker=dict(color=pal["teal_primary"], line=dict(color="#0B192C", width=0.6))
+        ))
+        fig_cf.add_trace(go.Bar(
+            x=proj_df["Year"], y=-proj_df["Death_Claims"],
+            name="Expected Death Claims (-)",
+            marker=dict(color=pal["coral_alert"])
+        ))
+        fig_cf.add_trace(go.Bar(
+            x=proj_df["Year"], y=-proj_df["Expenses"],
+            name="Policy Expenses (-)",
+            marker=dict(color=pal["ivory_bar"], line=dict(color=pal["teal_secondary"], width=1.0))
+        ))
+        fig_cf.add_trace(go.Bar(
+            x=proj_df["Year"], y=-proj_df["Reserve_Change"],
+            name="Reserve Change -dV (-)",
+            marker=dict(color=pal["slate_muted"])
+        ))
+        fig_cf.add_trace(go.Scatter(
+            x=proj_df["Year"], y=proj_df["Net_Profit"],
+            mode="lines+markers",
+            name="Net Distributable Profit ($)",
+            line=dict(color=pal["amber_accent"], width=3.2),
+            marker=dict(size=7, color="#FAF8F5", line=dict(color="#0B192C", width=2.0))
+        ))
+        fig_cf = apply_institutional_chart_layout(
+            fig_cf,
+            "Annual Cash Flow Decomposition & Distributable Profit Vector (per Issued Policy)",
+            pal,
+            height=490,
+            bottom_margin=110
         )
-        st.plotly_chart(fig_cf, use_container_width=True)
+        fig_cf.update_layout(barmode="relative")
+        fig_cf.update_xaxes(title_text="Policy Duration (Year)")
+        fig_cf.update_yaxes(title_text="Annual Cash Flow ($)")
+        render_chart(fig_cf, pal)
 
-        st.markdown("#### 📋 20-Year Actuarial Cash Flow & Reserve Schedule")
+        st.markdown("##### Actuarial Cash Flow & Reserve Schedule")
         st.dataframe(proj_df.style.format({
             "VBT_Base_q_Per_1000": "{:.2f}",
             "Wearoff_Factor": "{:.3f}",
@@ -656,15 +964,15 @@ def main():
 
         csv_bytes = proj_df.to_csv(index=False).encode("utf-8")
         st.download_button(
-            label="📥 Download 20-Year Cash Flow Projection (CSV)",
+            label="Export Cash Flow Schedule (CSV)",
             data=csv_bytes,
             file_name=f"term_life_projection_{base_res['table_used'].replace(' ', '_')}_age{issue_age}.csv",
             mime="text/csv"
         )
 
-    # === TAB 3: 7-SCENARIO STRESS TESTING ===
+    # === TAB 3: STRESS TESTING & SENSITIVITY ===
     with tab3:
-        st.markdown("#### ⚡ Phase 3A: Sensitivity & Macro/Biometric Stress Test Summary (Locked-In Gross Premium)")
+        st.markdown("##### Deterministic Sensitivity & Shock Analysis (Contractual Gross Premium Locked)")
         st.dataframe(stress_df.style.format({
             "Net_Premium ($)": "${:,.2f}",
             "Active_Pure_Prem ($)": "${:,.2f}",
@@ -679,40 +987,54 @@ def main():
         sc1, sc2 = st.columns(2)
         with sc1:
             fig_stress_res = go.Figure()
-            for scen_name, df_s in scenario_dfs.items():
+            s_palette = pal["stress_palette"]
+            for idx, (scen_name, df_s) in enumerate(scenario_dfs.items()):
                 fig_stress_res.add_trace(go.Scatter(
-                    x=df_s["Year"], y=df_s["Dynamic_Reserve_Per_Pol"],
-                    mode="lines", name=scen_name, line=dict(width=2.5)
+                    x=df_s["Year"],
+                    y=df_s["Dynamic_Reserve_Per_Pol"],
+                    mode="lines",
+                    name=scen_name,
+                    line=dict(width=2.6 if idx == 0 else 2.1, color=s_palette[idx % len(s_palette)])
                 ))
-            fig_stress_res.update_layout(
-                title="Dynamic Reserve Sensitivity Across 7 Stress Scenarios ($)",
-                xaxis_title="Policy Duration (Year)",
-                yaxis_title="Dynamic Reserve per Active Policy ($)",
-                height=420
+            fig_stress_res = apply_institutional_chart_layout(
+                fig_stress_res,
+                "Dynamic Reserve Sensitivity Across 7 Stress Scenarios ($)",
+                pal,
+                height=480,
+                bottom_margin=130,
+                legend_y=-0.23
             )
-            st.plotly_chart(fig_stress_res, use_container_width=True)
+            fig_stress_res.update_xaxes(title_text="Policy Duration (Year)")
+            fig_stress_res.update_yaxes(title_text="Dynamic Reserve per Active Policy ($)")
+            render_chart(fig_stress_res, pal)
 
         with sc2:
-            bar_colors = ["#1f77b4" if m >= 0 else "#d62728" for m in stress_df["Profit_Margin (%)"]]
+            bar_colors = [pal["teal_primary"] if m >= 0 else pal["coral_alert"] for m in stress_df["Profit_Margin (%)"]]
+            border_colors = ["#FAF8F5" if m >= 0 else "#0B192C" for m in stress_df["Profit_Margin (%)"]]
             fig_margin = go.Figure(go.Bar(
                 x=stress_df["Profit_Margin (%)"],
                 y=stress_df["Scenario"],
                 orientation="h",
-                marker_color=bar_colors,
+                name="Profit Margin (%)",
+                marker=dict(color=bar_colors, line=dict(color=border_colors, width=1.0)),
                 text=[f"{m:.2f}%" for m in stress_df["Profit_Margin (%)"]],
                 textposition="auto"
             ))
-            fig_margin.update_layout(
-                title="Profit Margin (%) Impact Under Shock Scenarios",
-                xaxis_title="Profit Margin (% of PV Gross Premiums)",
-                yaxis=dict(autorange="reversed"),
-                height=420
+            fig_margin = apply_institutional_chart_layout(
+                fig_margin,
+                "Profit Margin (%) Impact Under Shock Scenarios",
+                pal,
+                height=480,
+                bottom_margin=85
             )
-            st.plotly_chart(fig_margin, use_container_width=True)
+            fig_margin.update_layout(showlegend=False)
+            fig_margin.update_xaxes(title_text="Profit Margin (% of PV Gross Premiums)")
+            fig_margin.update_yaxes(autorange="reversed", showgrid=False)
+            render_chart(fig_margin, pal)
 
-    # === TAB 4: 8 SOA 2015 VBT COHORT COMPARISON ===
+    # === TAB 4: COHORT VALUATION COMPARISON ===
     with tab4:
-        st.markdown(f"#### 🧬 Phase 3B: Cross-Sectional Comparison Across All 8 SOA 2015 VBT Tables (Issue Age {issue_age})")
+        st.markdown(f"##### Cross-Sectional Valuation Across All 8 SOA 2015 VBT Tables (Issue Age {issue_age})")
         st.dataframe(cohort_df.style.format({
             "Net_Premium ($)": "${:,.2f}",
             "Active_Pure_Prem ($)": "${:,.2f}",
@@ -725,17 +1047,35 @@ def main():
         }), use_container_width=True)
 
         fig_cohort = go.Figure()
-        fig_cohort.add_trace(go.Bar(x=cohort_df["VBT_Sheet"], y=cohort_df["Active_Pure_Prem ($)"], name="Active Pure Prem (Multi-Decrement)", marker_color="#72b7b2"))
-        fig_cohort.add_trace(go.Bar(x=cohort_df["VBT_Sheet"], y=cohort_df["Net_Premium ($)"], name="Statutory Net Prem (Single-Decrement)", marker_color="#f58518"))
-        fig_cohort.add_trace(go.Bar(x=cohort_df["VBT_Sheet"], y=cohort_df["Gross_Premium ($)"], name="Contractual Gross Premium", marker_color="#4c78a8"))
-        fig_cohort.update_layout(
-            barmode="group",
-            title=f"Premium Structure Across All 8 SOA 2015 VBT Tables (Issue Age {issue_age})",
-            xaxis_title="SOA 2015 VBT Table",
-            yaxis_title="Annual Premium ($)",
-            height=430
+        fig_cohort.add_trace(go.Bar(
+            x=cohort_df["VBT_Sheet"],
+            y=cohort_df["Active_Pure_Prem ($)"],
+            name="Active Pure Premium (Multi-Decrement)",
+            marker=dict(color=pal["teal_primary"], line=dict(color="#0B192C", width=0.8))
+        ))
+        fig_cohort.add_trace(go.Bar(
+            x=cohort_df["VBT_Sheet"],
+            y=cohort_df["Net_Premium ($)"],
+            name="Statutory Net Premium (Single-Decrement)",
+            marker=dict(color=pal["ivory_bar"], line=dict(color=pal["teal_secondary"], width=1.4))
+        ))
+        fig_cohort.add_trace(go.Bar(
+            x=cohort_df["VBT_Sheet"],
+            y=cohort_df["Gross_Premium ($)"],
+            name="Contractual Gross Premium",
+            marker=dict(color=pal["navy_primary"], line=dict(color="#FAF8F5", width=0.8))
+        ))
+        fig_cohort = apply_institutional_chart_layout(
+            fig_cohort,
+            f"Annual Premium Structure Across All 8 SOA 2015 VBT Tables (Issue Age {issue_age})",
+            pal,
+            height=470,
+            bottom_margin=105
         )
-        st.plotly_chart(fig_cohort, use_container_width=True)
+        fig_cohort.update_layout(barmode="group")
+        fig_cohort.update_xaxes(title_text="SOA 2015 VBT Table")
+        fig_cohort.update_yaxes(title_text="Annual Premium ($)")
+        render_chart(fig_cohort, pal)
 
 
 if __name__ == "__main__":
